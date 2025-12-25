@@ -2,250 +2,256 @@
 
 ## Overview
 
-This service implements **Phase 1** of the BeyondChats assignment.
+This repository implements the BeyondChats assignment across phases.
 
-The goal of Phase 1 is to:
+The system:
 
-* Dynamically fetch the **5 oldest blog articles** from the BeyondChats website
-* Extract their **full content**
-* Store them in a MySQL database
-* Expose APIs to retrieve the stored articles
+- Scrapes the **oldest blog articles** from the BeyondChats website  
+- Extracts their **full content**  
+- Stores them in a MySQL database  
+- Exposes REST APIs via Laravel  
+- Enhances existing articles using an LLM pipeline (Phase 2)  
+- Provides a React frontend to view **original vs enhanced** articles (Phase 3)
 
-The implementation focuses on correctness, robustness, and real‑world scraping constraints rather than hardcoded assumptions.
+The implementation focuses on correctness, robustness, and real-world constraints rather than hardcoded assumptions.
 
 ---
 
 ## Tech Stack
 
-* **Backend Framework:** Laravel (PHP)
-* **Database:** MySQL
-* **HTTP Client:** Laravel HTTP Client (Guzzle)
-* **HTML Parsing:** Symfony DomCrawler
-* **Version Control:** Git + GitHub
+### Backend
+- Laravel (PHP)
+- MySQL
+- Laravel HTTP Client (Guzzle)
+- Symfony DomCrawler
+- Laravel Artisan Commands
+
+### Phase 2 – Article Enhancement
+- Node.js
+- mysql2 (promise)
+- LLM via **Groq** (OpenAI-compatible chat completions)
+- Model: **llama-instant**
+
+### Frontend
+- React
+- react-markdown
+
+### Version Control
+- Git + GitHub
 
 ---
 
-## High‑Level Architecture
-
+## High-Level Architecture
 ```
-BeyondChats Blog Website
-        ↓
-Scraper Command (Laravel Artisan)
-        ↓
-Article Parsing Logic
-        ↓
-MySQL Database (articles table)
-        ↓
-REST API (/api/articles)
+BeyondChats Blog Website  
+↓  
+Laravel Scraper Command (Phase 1)  
+↓  
+MySQL Database (`articles` table)  
+↓  
+Node Enhancement Script (Phase 2)  
+↓  
+Laravel REST APIs  
+↓  
+React Frontend (Phase 3)
 ```
-
 ---
 
-## Phase 1 – Functional Breakdown
+## Phase 1 – Blog Scraping and Storage
 
 ### 1. Dynamic Blog Discovery
 
 Instead of hardcoding page numbers, the scraper:
 
-* Starts from `https://beyondchats.com/blogs/`
-* Detects pagination links dynamically
-* Identifies the **last page** (oldest articles)
+- Starts from `https://beyondchats.com/blogs/`
+- Detects pagination links dynamically
+- Identifies the last page (oldest articles)
 
-This ensures the solution remains valid even when new blogs are added.
+This keeps the solution valid even when new blogs are added.
 
----
+### 2. Correct Oldest-First Traversal
 
-### 2. Correct Oldest‑First Traversal
+To fetch the oldest 5 articles globally, the scraper:
 
-To fetch the **oldest 5 articles globally**, the scraper:
+- Traverses pages backwards (last page → previous pages)
+- Iterates articles from bottom to top within each page
+- Stops as soon as 5 unique article URLs are collected
 
-* Traverses pages **backwards** (last page → previous pages)
-* Within each page, iterates articles **from bottom to top**
-* Stops as soon as 5 unique article URLs are collected
-
-This avoids incorrectly picking newer articles from older pages.
-
----
+This prevents accidentally selecting newer posts.
 
 ### 3. Accurate DOM Targeting
 
-The scraper avoids sidebar, featured posts, tags, and author links by:
+To avoid featured posts, tags, or sidebar content:
 
-* Selecting only `article h2 a` for article URLs
-* Extracting article content strictly from the `.post-content` container
+- Article URLs are extracted only from `article h2 a`
+- Content is extracted strictly from the `.post-content` container
 
-This ensures:
-
-* No featured or related articles are accidentally included
-* Only the actual blog body is stored
-
----
+This ensures only real blog content is stored.
 
 ### 4. Full Content Extraction
 
 For each selected article:
 
-* The page is fetched individually
-* The title is extracted from the `<h1>` tag
-* The body content is extracted from `.post-content`
-* Only readable elements (`p`, `h2`, `h3`, `ul`, `ol`) are stored
-
-Content is stored as **plain text**, which is sufficient for backend processing and retrieval.
-
----
+- Page is fetched individually
+- Title is extracted from `<h1>`
+- Body content is extracted from `.post-content`
+- Only readable elements (`p`, `h2`, `h3`, `ul`, `ol`) are stored
+- Content is stored as plain text for backend processing
 
 ### 5. Database Design
 
-The `articles` table schema:
+`articles` table schema:
 
-| Column       | Type      | Description                    |
-| ------------ | --------- | ------------------------------ |
-| id           | bigint    | Primary key                    |
-| title        | string    | Article title                  |
-| content      | longText  | Full article content           |
-| source_url   | string    | Unique article URL             |
-| is_generated | boolean   | Future use (AI‑generated flag) |
-| created_at   | timestamp | Record creation                |
-| updated_at   | timestamp | Record update                  |
+| Column | Type | Description |
+|------|------|------------|
+| id | bigint | Primary key |
+| title | string | Article title |
+| content | longText | Full article content |
+| source_url | string | Unique article URL |
+| is_generated | boolean | Original vs enhanced flag |
+| created_at | timestamp | Record creation |
+| updated_at | timestamp | Record update |
 
-The `source_url` column is unique to ensure:
-
-* No duplicate inserts
-* Idempotent scraper execution
-
----
+Notes:
+- `source_url` is unique to avoid duplicates
+- Scraper execution is idempotent
 
 ### 6. Scraper Execution
 
-The scraper is implemented as a Laravel Artisan command:
-
-```bash
+Run using:
+```
 php artisan app:scrape-beyond-chats-old-blogs
 ```
 
 Behavior:
-
-* Can be run multiple times safely
-* Updates existing articles if already present
-* Inserts missing articles
-
----
+- Safe to run multiple times
+- Inserts missing articles
+- Prevents duplicates automatically
 
 ### 7. API Endpoints
 
-#### Fetch Stored Articles
-
+Fetch stored articles:
 ```
 GET /api/articles
 ```
 
 Returns:
+- All stored articles
+- Includes original and enhanced versions
+- Includes `is_generated` flag
 
-* All stored articles
-* Includes title, content, source URL, timestamps
+---
 
-This satisfies the Phase 1 API requirement.
+## Phase 2 – Article Enhancement Using LLM
+
+### Goal
+
+Enhance existing articles by rewriting them in a more modern, structured, and readable format while preserving meaning.
+
+### Why Google Scraping Was Skipped
+
+Fetching real Google ranking articles requires paid or rate-limited APIs (SerpAPI, Google Custom Search, etc).  
+To keep the project fully runnable without external paid dependencies, Google scraping was intentionally skipped.
+
+Instead, the enhancement relies on a strong LLM prompt that enforces:
+
+- Better structure and formatting
+- Clear headings and logical flow
+- Modern professional tone
+- Original phrasing (no copying)
+
+### Enhancement Flow
+
+- Fetch one original article (`is_generated = 0`)
+- Ensure no enhanced version already exists for that article
+- Send content to the LLM for enhancement
+- Store enhanced version as a new row with:
+  - Same title
+  - `is_generated = 1`
+- Re-run script until all articles are enhanced
+
+### LLM Provider and Model
+
+- Provider: **Groq**
+- Model: **llama-3.1-8b-instant**
+
+If the LLM call fails, the pipeline falls back to a structured enhancement output to ensure robustness.
+
+---
+
+## Phase 3 – React Frontend
+
+### Goal
+
+Provide a clean UI to view original and enhanced articles.
+
+### Features
+
+- Fetches articles from `GET /api/articles`
+- Displays articles in responsive cards
+- Supports:
+  - Read more / View less
+  - Toggle between original and enhanced versions
+- Enhanced content renders correctly using Markdown via `react-markdown`
+
+### Deployment
+
+- The frontend is deployed independently (Vercel)
+- Backend runs locally for API access
 
 ---
 
 ## How to Run Locally
 
-### 1. Clone Repository
+### Backend Setup
 
-```bash
+```
 git clone <repository-url>
 cd backend
-```
-
-### 2. Install Dependencies
-
-```bash
 composer install
 ```
 
-### 3. Configure Environment
+Configure `.env` with MySQL credentials.
 
-* Create `.env`
-* Configure MySQL credentials
-
-```env
-DB_DATABASE=your_db
-DB_USERNAME=your_user
-DB_PASSWORD=your_password
+Run migrations:
 ```
-
-### 4. Run Migrations
-
-```bash
 php artisan migrate
 ```
 
-### 5. Run Scraper
-
-```bash
+Run scraper:
+```
 php artisan app:scrape-beyond-chats-old-blogs
 ```
 
-### 6. Start Server
+Run enhancement pipeline:
+```
+cd phase2
+npm install
+node enhanceArticle.js
+```
 
-```bash
+
+Start server:
+```
 php artisan serve
 ```
 
-Access API:
-
+API available at:
 ```
 http://127.0.0.1:8000/api/articles
 ```
 
----
-
-## Notes & Assumptions
-
-* SSL verification is disabled **only for local development** (Windows environment issue)
-* HTML structure is assumed stable based on current BeyondChats site
-* Images and rich HTML formatting are intentionally excluded
-
----
-
-## Phase 1 Status
-
-✅ Phase 1 completed successfully
-
-The system dynamically fetches and stores the 5 oldest BeyondChats blog articles with full content and exposes them via API.
+### Frontend Setup
+```
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
+## Status
 
-
-## Phase 2 – Article Enhancement Using LLM
-
-In Phase 2, the system enhances existing articles stored in the database by
-aligning them with the structure and formatting of top Google-ranking content.
-
-### Flow
-1. An existing article (from Phase 1) is fetched from the database.
-2. Two reference articles are used to represent current top-ranking Google content.
-3. An LLM is called to rewrite and enhance the original article by:
-   - Improving structure and readability
-   - Modernizing tone and formatting
-   - Preserving the original meaning
-   - Ensuring originality (no sentence copying)
-
-### Google Search Assumption
-For the purpose of this assignment, Google search results are simulated using
-representative reference articles. This avoids reliance on paid or rate-limited
-search APIs during local execution.
-
-In a production environment, these reference articles would be dynamically
-fetched using a Google Search API (e.g., SerpAPI or Google Custom Search)
-without changing the enhancement logic.
-
-### LLM Integration Note
-The system integrates with an LLM (OpenAI) to perform article enhancement.
-If API quota limits are reached during execution, the pipeline falls back to
-a simulated enhanced output while preserving the full request structure
-and prompt design.
-
-This demonstrates graceful degradation and external dependency handling.
-
+- Phase 1 completed
+- Phase 2 completed
+- Phase 3 completed
