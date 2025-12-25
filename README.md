@@ -216,14 +216,7 @@ The system dynamically fetches and stores the 5 oldest BeyondChats blog articles
 
 ---
 
-## Phase 2
 
-* Integrate Node.js script
-* Fetch latest articles from Google Search
-* Generate AI‑based summaries using LLM
-* Store generated articles alongside scraped content
-
----
 
 ## Phase 2 – Article Enhancement Using LLM
 
