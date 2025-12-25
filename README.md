@@ -23,17 +23,16 @@ The implementation focuses on correctness, robustness, and real-world constraint
 - Laravel (PHP)
 - MySQL
 - Laravel HTTP Client (Guzzle)
-- Symfony DomCrawler
 - Laravel Artisan Commands
 
 ### Phase 2 – Article Enhancement
 - Node.js
 - mysql2 (promise)
 - LLM via **Groq** (OpenAI-compatible chat completions)
-- Model: **llama-instant**
+- Model: **llama-3.1-8b-instant**
 
 ### Frontend
-- React
+- ReactJS
 - react-markdown
 
 ### Version Control
