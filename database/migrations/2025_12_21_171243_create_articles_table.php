@@ -15,7 +15,7 @@ return new class extends Migration
         $table->id();
         $table->string('title');
         $table->longText('content');
-        $table->string('source_url')->nullable();
+        $table->string('source_url')->unique();
         $table->boolean('is_generated')->default(false);
         $table->timestamps();
     });
