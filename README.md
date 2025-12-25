@@ -216,9 +216,43 @@ The system dynamically fetches and stores the 5 oldest BeyondChats blog articles
 
 ---
 
-## Next Steps (Phase 2)
+## Phase 2
 
-* Integrate Node.js service
+* Integrate Node.js script
 * Fetch latest articles from Google Search
 * Generate AI‑based summaries using LLM
 * Store generated articles alongside scraped content
+
+---
+
+## Phase 2 – Article Enhancement Using LLM
+
+In Phase 2, the system enhances existing articles stored in the database by
+aligning them with the structure and formatting of top Google-ranking content.
+
+### Flow
+1. An existing article (from Phase 1) is fetched from the database.
+2. Two reference articles are used to represent current top-ranking Google content.
+3. An LLM is called to rewrite and enhance the original article by:
+   - Improving structure and readability
+   - Modernizing tone and formatting
+   - Preserving the original meaning
+   - Ensuring originality (no sentence copying)
+
+### Google Search Assumption
+For the purpose of this assignment, Google search results are simulated using
+representative reference articles. This avoids reliance on paid or rate-limited
+search APIs during local execution.
+
+In a production environment, these reference articles would be dynamically
+fetched using a Google Search API (e.g., SerpAPI or Google Custom Search)
+without changing the enhancement logic.
+
+### LLM Integration Note
+The system integrates with an LLM (OpenAI) to perform article enhancement.
+If API quota limits are reached during execution, the pipeline falls back to
+a simulated enhanced output while preserving the full request structure
+and prompt design.
+
+This demonstrates graceful degradation and external dependency handling.
+
